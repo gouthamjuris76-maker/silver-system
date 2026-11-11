@@ -1,0 +1,447 @@
+<title>Code Secure Valuation Meter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: verdict band on top (meter + ask), then a two-column workbench: levers left, results right. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --sunk:#e9edf3; --line:#d5dbe5;
+  --fg:#111a2b; --fg2:#47536a; --fg3:#6c778c;
+  --accent:#1f4fd8; --accent-soft:#dfe7fb;
+  --good:#0b7a4b; --warn:#a05a00; --bad:#b3261e; --bad-soft:#fbe6e4; --good-soft:#dff3ea; --warn-soft:#fbeed6;
+  --s1:#2a78d6; --s2:#eb6834;
+  --display:"Space Grotesk","Segoe UI",system-ui,sans-serif;
+  --body:"Inter","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e131c; --surface:#161d2a; --sunk:#1e2736; --line:#2c384c;
+  --fg:#eef1f6; --fg2:#b8c1d1; --fg3:#8a95a9;
+  --accent:#8eacff; --accent-soft:#1f2c4d;
+  --good:#5fd39f; --warn:#f0b455; --bad:#ff8a80; --bad-soft:#3a1d1c; --good-soft:#143326; --warn-soft:#38290f;
+  --s1:#3987e5; --s2:#d95926; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0e131c; --surface:#161d2a; --sunk:#1e2736; --line:#2c384c;
+  --fg:#eef1f6; --fg2:#b8c1d1; --fg3:#8a95a9;
+  --accent:#8eacff; --accent-soft:#1f2c4d;
+  --good:#5fd39f; --warn:#f0b455; --bad:#ff8a80; --bad-soft:#3a1d1c; --good-soft:#143326; --warn-soft:#38290f;
+  --s1:#3987e5; --s2:#d95926; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(24px,4vw,34px);font-weight:700}
+h2{font-size:19px;font-weight:600}
+h3{font-size:15px;font-weight:600}
+p{margin:0}
+.lede{color:var(--fg2);max-width:68ch}
+.eyebrow{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);font-weight:600}
+.num{font-variant-numeric:tabular-nums;font-family:var(--display)}
+a{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.top{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px}
+.top>*,.bench>*{min-width:0}
+.bench{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.top,.bench{grid-template-columns:minmax(0,1fr)}}
+
+/* meter */
+.big{font-size:clamp(30px,6vw,46px);font-weight:700;line-height:1.05}
+.meter{position:relative;height:74px;margin-top:6px}
+.track{position:absolute;left:0;right:0;top:30px;height:14px;background:var(--sunk);border-radius:7px}
+.band{position:absolute;top:30px;height:14px;background:var(--accent);opacity:.35;border-radius:7px}
+.needle{position:absolute;top:22px;width:4px;height:30px;background:var(--accent);border-radius:2px;transform:translateX(-2px)}
+.deckmark{position:absolute;top:22px;width:4px;height:30px;background:var(--bad);border-radius:2px;transform:translateX(-2px)}
+.mlabel{position:absolute;top:0;font-size:11.5px;font-weight:600;white-space:nowrap}
+.mlabel.mid{color:var(--accent)} .mlabel.deck{color:var(--bad)}
+.scale{position:absolute;top:54px;left:0;right:0;display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg3)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.methods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.methods{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mcard{background:var(--sunk);border-radius:8px;padding:10px 12px}
+.mcard .v{font-size:20px;font-weight:600}
+.mcard small{color:var(--fg3);display:block;font-size:12px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--fg2)}
+.kv b{font-weight:600;text-align:right}
+
+/* controls */
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--fg2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.seg button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ctl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.ctl label{font-size:13.5px;color:var(--fg2)}
+.ctl output{font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.ctl input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
+.group{display:flex;flex-direction:column;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
+.group:first-of-type{border-top:0;padding-top:0}
+details summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:15px}
+details .inner{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.note{font-size:12.5px;color:var(--fg3)}
+.flag{font-size:13px;padding:8px 10px;border-radius:7px;background:var(--warn-soft);color:var(--warn)}
+
+/* table + chart */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;color:var(--fg2)}
+thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);font-weight:600}
+tr.hl td{font-weight:700;color:var(--fg);font-family:var(--display);font-size:15.5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--fg2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.chartbox{position:relative}
+svg text{font-family:var(--body);fill:var(--fg2);font-size:11.5px}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font-size:12.5px;padding:6px 9px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-110%)}
+ul.fix{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:9px;max-width:80ch}
+ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
+.src{columns:2;column-gap:28px;font-size:13px;padding-left:18px;margin:0}
+@media (max-width:700px){.src{columns:1}}
+.src li{break-inside:avoid;margin-bottom:6px}
+</style>
+
+<div class="wrap">
+  <header class="stack" style="gap:8px">
+    <span class="eyebrow">Code Secure · single-beneficiary software escrow · all figures in ₹</span>
+    <h1>Valuation Meter</h1>
+    <p class="lede">Four ways of pricing a pre-revenue company, including the rule Indian investors use in practice, checked against a three-year revenue build for mid-size NBFCs. Move any lever and every number updates. Defaults are an outside evaluator's starting view, so change them where you know better.</p>
+  </header>
+
+  <section class="top">
+    <div class="panel stack">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+        <div><span class="eyebrow">Defensible pre-money today</span>
+          <div class="big num" id="midBig">–</div>
+          <div class="note" id="rangeTxt"></div></div>
+        <span class="pill" id="verdict"></span>
+      </div>
+      <div class="meter" id="meter">
+        <div class="track"></div><div class="band" id="band"></div>
+        <div class="needle" id="needle"></div><div class="deckmark" id="deckmark"></div>
+        <div class="mlabel mid" id="midLbl">Midpoint</div><div class="mlabel deck" id="deckLbl">Deck</div>
+        <div class="scale"><span>₹0</span><span id="scaleMax"></span></div>
+      </div>
+      <div class="methods">
+        <div class="mcard"><small>Berkus</small><div class="v num" id="mBerkus"></div><small>risk-reduction checklist</small></div>
+        <div class="mcard"><small>Scorecard (Payne)</small><div class="v num" id="mScore"></div><small>vs regional median</small></div>
+        <div class="mcard"><small>VC method</small><div class="v num" id="mVC"></div><small>exit value worked backward</small></div>
+        <div class="mcard"><small>Runway and stake</small><div class="v num" id="mRun"></div><small>Indian seed practice</small></div>
+      </div>
+    </div>
+
+    <div class="panel stack">
+      <h2>The ask</h2>
+      <div class="ctl"><label for="raise">Amount raised</label><output id="raiseO"></output>
+        <input type="range" id="raise" min="25" max="900" step="5" value="75"></div>
+      <div class="ctl"><label for="deckPre">Pre-money claimed in deck</label><output id="deckPreO"></output>
+        <input type="range" id="deckPre" min="2" max="40" step="0.5" value="15"></div>
+      <div class="ctl"><label for="stake">Stake investors usually take in a round</label><output id="stakeO"></output>
+        <input type="range" id="stake" min="10" max="25" step="0.5" value="17.5"></div>
+      <div class="ctl"><label for="chq">Typical angel cheque</label><output id="chqO"></output>
+        <input type="range" id="chq" min="5" max="30" step="1" value="10"></div>
+      <div>
+        <div class="kv"><span>Equity given at deck valuation</span><b class="num" id="dilDeck"></b></div>
+        <div class="kv"><span>Equity given at meter midpoint</span><b class="num" id="dilMid"></b></div>
+        <div class="kv"><span>Exit value needed to justify deck figure</span><b class="num" id="needExit"></b></div>
+        <div class="kv"><span>Revenue run-rate needed at exit</span><b class="num" id="needArr"></b></div>
+      </div>
+      <p class="note" id="needNote"></p>
+    </div>
+  </section>
+
+  <section class="bench">
+    <div class="panel stack" style="gap:16px">
+      <div class="stack" style="gap:8px">
+        <h2>Levers</h2>
+        <div class="seg" role="group" aria-label="Scenario">
+          <button id="pCons" aria-pressed="false">Conservative</button>
+          <button id="pBase" aria-pressed="true">Base</button>
+          <button id="pFounder" aria-pressed="false">Founder plan (40%)</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Market: mid-size NBFCs</h3>
+        <div class="ctl"><label for="entities">Target NBFCs</label><output id="entitiesO"></output><input type="range" id="entities" min="100" max="700" step="10" value="400"></div>
+        <div class="ctl"><label for="apps">Mission-critical apps per NBFC</label><output id="appsO"></output><input type="range" id="apps" min="1" max="10" step="0.5" value="4.5"></div>
+        <p class="note" id="mktNote"></p>
+      </div>
+
+      <div class="group">
+        <h3>Share of target NBFCs won (cumulative)</h3>
+        <div class="ctl"><label for="s1">End of year 1</label><output id="s1O"></output><input type="range" id="s1" min="0" max="15" step="0.25" value="1.5"></div>
+        <div class="ctl"><label for="s2">End of year 2</label><output id="s2O"></output><input type="range" id="s2" min="0" max="40" step="0.5" value="8"></div>
+        <div class="ctl"><label for="s3">End of year 3</label><output id="s3O"></output><input type="range" id="s3" min="0" max="60" step="1" value="20"></div>
+        <div class="ctl"><label for="apc">Agreements per client NBFC</label><output id="apcO"></output><input type="range" id="apc" min="1" max="6" step="0.25" value="2"></div>
+      </div>
+
+      <div class="group">
+        <h3>Price per single-beneficiary agreement</h3>
+        <div class="ctl"><label for="p1">First year (incl. onboarding)</label><output id="p1O"></output><input type="range" id="p1" min="1" max="4" step="0.05" value="2.25"></div>
+        <div class="ctl"><label for="p2">Renewal years</label><output id="p2O"></output><input type="range" id="p2" min="0.75" max="3" step="0.05" value="1.7"></div>
+        <div class="ctl"><label for="churn">Agreements lost per year</label><output id="churnO"></output><input type="range" id="churn" min="0" max="25" step="1" value="5"></div>
+      </div>
+
+      <div class="group">
+        <h3>SBOM add-on</h3>
+        <div class="ctl"><label for="sbA">Agreements that also buy SBOM custody</label><output id="sbAO"></output><input type="range" id="sbA" min="0" max="100" step="5" value="30"></div>
+        <div class="ctl"><label for="sbP">SBOM price per agreement, per year</label><output id="sbPO"></output><input type="range" id="sbP" min="0" max="2" step="0.05" value="0.5"></div>
+      </div>
+
+      <div class="group">
+        <h3>Investor maths</h3>
+        <div class="ctl"><label for="mult">Revenue multiple</label><output id="multO"></output><input type="range" id="mult" min="2" max="15" step="0.5" value="6"></div>
+        <div class="ctl"><label for="ret">Return the investor wants</label><output id="retO"></output><input type="range" id="ret" min="5" max="30" step="1" value="10"></div>
+        <div class="ctl"><label for="exitY">Exit year</label><output id="exitYO"></output><input type="range" id="exitY" min="4" max="8" step="1" value="6"></div>
+        <div class="ctl"><label for="g">Yearly growth after year 3</label><output id="gO"></output><input type="range" id="g" min="0" max="120" step="5" value="40"></div>
+        <div class="ctl"><label for="keep">Stake left after later rounds</label><output id="keepO"></output><input type="range" id="keep" min="40" max="100" step="5" value="70"></div>
+      </div>
+
+      <details class="group">
+        <summary>Berkus scores</summary>
+        <div class="inner">
+          <div class="ctl"><label for="bMax">Maximum value per factor</label><output id="bMaxO"></output><input type="range" id="bMax" min="0.5" max="4.5" step="0.25" value="2"></div>
+          <div class="ctl"><label for="b1">Sound idea</label><output id="b1O"></output><input type="range" id="b1" min="0" max="100" step="5" value="80"></div>
+          <div class="ctl"><label for="b2">Working prototype</label><output id="b2O"></output><input type="range" id="b2" min="0" max="100" step="5" value="30"></div>
+          <div class="ctl"><label for="b3">Quality of team</label><output id="b3O"></output><input type="range" id="b3" min="0" max="100" step="5" value="50"></div>
+          <div class="ctl"><label for="b4">Strategic relationships</label><output id="b4O"></output><input type="range" id="b4" min="0" max="100" step="5" value="30"></div>
+          <div class="ctl"><label for="b5">Rollout or sales</label><output id="b5O"></output><input type="range" id="b5" min="0" max="100" step="5" value="10"></div>
+          <p class="note">Berkus's original cap is USD 500K per factor. ₹2 Cr per factor makes a perfect score equal the top of the India pre-seed range (₹10 Cr).</p>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>Scorecard scores</summary>
+        <div class="inner">
+          <div class="ctl"><label for="scBase">Median pre-money for similar Indian startups</label><output id="scBaseO"></output><input type="range" id="scBase" min="2" max="25" step="0.5" value="6.5"></div>
+          <div class="ctl"><label for="c1">Team (30%)</label><output id="c1O"></output><input type="range" id="c1" min="50" max="150" step="5" value="100"></div>
+          <div class="ctl"><label for="c2">Size of opportunity (25%)</label><output id="c2O"></output><input type="range" id="c2" min="50" max="150" step="5" value="90"></div>
+          <div class="ctl"><label for="c3">Product and technology (15%)</label><output id="c3O"></output><input type="range" id="c3" min="50" max="150" step="5" value="80"></div>
+          <div class="ctl"><label for="c4">Competition (10%)</label><output id="c4O"></output><input type="range" id="c4" min="50" max="150" step="5" value="90"></div>
+          <div class="ctl"><label for="c5">Sales and partnerships (10%)</label><output id="c5O"></output><input type="range" id="c5" min="50" max="150" step="5" value="70"></div>
+          <div class="ctl"><label for="c6">Need for more funding (5%)</label><output id="c6O"></output><input type="range" id="c6" min="50" max="150" step="5" value="110"></div>
+          <div class="ctl"><label for="c7">Other: regulatory tailwind (5%)</label><output id="c7O"></output><input type="range" id="c7" min="50" max="150" step="5" value="120"></div>
+          <p class="note">100% means average for the stage. Below 100% is weaker than a typical peer, above is stronger.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stack" style="gap:18px">
+      <div class="panel stack">
+        <h2>Year-by-year build</h2>
+        <div class="tw"><table>
+          <thead><tr><th></th><th>Year 1</th><th>Year 2</th><th>Year 3</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table></div>
+        <div id="capFlag" class="flag" hidden></div>
+        <p class="note">Indicative valuation is the midpoint of two readings: the VC-method value at that date, and year-end recurring revenue times the revenue multiple. Early on the first dominates because revenue is still small.</p>
+      </div>
+
+      <div class="panel stack">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+          <h2>Two readings of value, ₹ Cr</h2>
+          <div class="legend"><span><i style="background:var(--s1)"></i>VC method (forward)</span><span><i style="background:var(--s2)"></i>Recurring revenue × multiple</span></div>
+        </div>
+        <div class="chartbox"><svg id="chart" viewBox="0 0 640 260" width="100%" role="img" aria-label="Valuation by year under two methods"></svg><div class="tip" id="tip" hidden></div></div>
+      </div>
+
+      <div class="panel stack">
+        <h2>How Indian investors would price this round</h2>
+        <div>
+          <div class="kv"><span>Pre-money by the runway-and-stake rule</span><b class="num" id="inRun"></b></div>
+          <div class="kv"><span>Angels needed at this cheque size</span><b class="num" id="inAngels"></b></div>
+          <div class="kv"><span id="inA1L"></span><b id="inA1"></b></div>
+          <div class="kv"><span id="inA2L"></span><b id="inA2"></b></div>
+          <div class="kv"><span id="inV1L"></span><b id="inV1"></b></div>
+        </div>
+        <p class="note" id="inMile"></p>
+        <ul class="fix">
+          <li><b>Angels have no formula.</b> Sarthak Ahuja: angels ask for a stake that feels worth their cheque and want 2–5× in 4–5 years, by selling to a later VC. VCs fund the next 18–24 months of runway for 15–20% and want 15–20× in 5 years, 8 at most. They compare you to competitors on revenue multiples. Private equity and DCF come much later.</li>
+          <li><b>Dilution adds up.</b> Ahuja's thumb rule is about 17.5% a round on average, 20–25% in early rounds, over four rounds.</li>
+          <li><b>Simple rules angels use.</b> Tarun Mahajan: before revenue, a five-point checklist where a 50% score halves the value. After revenue, many angels pay about 3× yearly sales, or match a recently funded competitor. A cash-flow valuation assumes the investor wants at least 25% a year.</li>
+          <li><b>Valuation gets negotiated down, then tied to targets.</b> On Startup Singam a founder asked ₹2.5 Cr at ₹50 Cr. The investors said they were not convinced by the valuation, cut the round to ₹1.5 Cr, and set the price by a revenue target: ₹30 Cr if turnover reached ₹6 Cr by the date, ₹25 Cr if not, through convertible debentures. The captions are partial, so treat the details as approximate.</li>
+          <li><b>Fund maths drives everything.</b> Karthik Reddy of Blume on Nikhil Kamath's show: overseas backers of Indian funds expect at least 25% compounded, about five companies return 80–90% of a fund, and term sheets expect an exit in 5–7 years. A company that cannot become one of those five is a hard sell to a VC, whatever the price.</li>
+          <li><b>At seed, VCs bet on the founders, not a formula.</b> Rajan Anandan of Peak XV: at seed about 80% of the bet is on the team, and Surge picked 14 companies out of more than 4,000. In 71 minutes the Peak XV, Elevation and Accel partners never mention a valuation method. They look for a fresh insight learned from customers, technology and selling ability together in the founding team, and a few customers who love the product over many lukewarm ones. Product-market fit is tested at Series A and unit economics at Series B.</li>
+          <li><b>Say it like it is.</b> The same panel: "contracted" revenue means a signed contract, not an email or a WhatsApp message, and investors will call your customers to check. Overstating traction is close to impossible to recover from. Saying "five design partners, no revenue yet" earns credibility.</li>
+          <li><b>Team.</b> On the Kamath panel the investors said a CEO needs a strong technology co-founder beside them, and that building product before understanding the problem usually fails.</li>
+          <li><b>Most businesses should not raise VC money.</b> Ankur Warikoo: about 90% of businesses are not fundable in the venture sense. Angels usually write ₹5–30 lakh cheques, so ₹1 Cr needs 4–20 of them.</li>
+        </ul>
+        <p class="note">Sources: captions and descriptions of the videos, read through a search service. I read the full transcript of the Peak XV, Elevation and Accel panel. The 2.5-hour Kamath episode is covered only by clips and Blume's written summary.</p>
+        <ol class="src">
+          <li><a href="https://www.youtube.com/watch?v=jOQkZ6dQrbk">How investors evaluate startups, Peak XV, Elevation and Accel</a></li>
+          <li><a href="https://www.youtube.com/watch?v=s68vp8EtvDI">Sarthak Ahuja, valuation methods by investor type</a></li>
+          <li><a href="https://www.youtube.com/shorts/xTAjqkl33_Y">Sarthak Ahuja, how much equity to give</a></li>
+          <li><a href="https://www.youtube.com/watch?v=0NfTzbCUxoQ">Sarthak Ahuja, five things you need to raise funds</a></li>
+          <li><a href="https://www.youtube.com/watch?v=332Y8G3Ok50">Tarun Mahajan, startup valuation made simple</a></li>
+          <li><a href="https://www.youtube.com/watch?v=iFwekw8jXgM">Startup Singam pitch episode</a></li>
+          <li><a href="https://blume.vc/commentaries/karthik-reddy-on-wtf-is-with-nikhil-kamath-episode-9">Blume summary of WTF is Venture Capital</a></li>
+          <li><a href="https://www.youtube.com/watch?v=fnwmK3Zovdk">Top VCs share their investment checklist</a></li>
+          <li><a href="https://www.youtube.com/watch?v=93LLYkn8wls">Ankur Warikoo, raising funds explained</a></li>
+        </ol>
+      </div>
+
+      <div class="panel stack">
+        <h2>What to correct in the pitch</h2>
+        <ul class="fix" id="fixes"></ul>
+      </div>
+
+      <div class="panel stack">
+        <h2>What is verified and what is assumed</h2>
+        <ul class="fix">
+          <li><b>Verified from RBI text and reporting:</b> the 2026 Directions for commercial banks (31 Jul 2026) require source code or an escrow arrangement "or other arrangements", and updates and fixes must be included. Commentary on the parallel NBFC Directions says the same rule sits in the chapter for Middle, Upper and Top Layer NBFCs, not the Base Layer.</li>
+          <li><b>Verified counts, with a range:</b> 564 Middle Layer and 11 Upper Layer NBFCs at 30 Sep 2025 (FIU-India document). A third-party list shows 628 Middle Layer at 30 Jun 2026. Your figure of about 400 below ₹10,000 Cr is plausible but I could not confirm it from an RBI source.</li>
+          <li><b>Verified comparable:</b> NCC Group sold Escode, the largest software escrow business, to TDR Capital for £275M enterprise value on £66.5M revenue and £30.9M adjusted EBITDA. That is about 4.1× revenue and 8.9× EBITDA (my arithmetic).</li>
+          <li><b>Verified, secondary sources:</b> SEBI's CSCRF asks regulated entities to keep SBOMs for critical systems, with CERT-In guidelines as the reference. I found nothing saying an SBOM must be lodged with an escrow agent, so the SBOM add-on here is a product bet, not a mandate.</li>
+          <li><b>Benchmarks from blogs, not primary data:</b> India pre-seed pre-money ₹3–10 Cr; pre-revenue enterprise SaaS ₹8–18 Cr; private SaaS 3.3–5.3× revenue, 6–8× for fast growers.</li>
+          <li><b>My assumptions, not sourced:</b> the three share scenarios, churn, SBOM price and attach rate, growth after year 3, the investor's return target, and every Berkus and Scorecard score.</li>
+        </ul>
+        <ol class="src">
+          <li><a href="https://rbi.org.in/scripts/NotificationUser.aspx?Id=13643&Mode=0">RBI notification, Commercial Banks Directions 2026</a></li>
+          <li><a href="https://taxguru.in/rbi/rbi-issues-nbfc-cybersecurity-technology-risk-directions-2026-governance-framework.html">NBFC Cybersecurity Directions 2026 summary</a></li>
+          <li><a href="https://fiuindia.gov.in/pdfs/downloads/NonCompliantNBFC28022026.pdf">FIU-India NBFC layer counts</a></li>
+          <li><a href="https://www.fundstiger.in/lenders/rbi-registered-nbfc-list/">RBI-registered NBFC list, June 2026</a></li>
+          <li><a href="https://www.investegate.co.uk/announcement/rns/ncc-group--ncc/ncc-announces-sale-of-escode-business-/9373028">NCC announces sale of Escode</a></li>
+          <li><a href="https://www.verdict.co.uk/ncc-group-sale-escode-tdr/">Escode revenue and EBITDA</a></li>
+          <li><a href="https://kpmg.com/in/en/insights/2025/12/sbom-in-indias-regulatory-landscape-building-trust-hrough-transparency.html">KPMG on SBOM in Indian regulation</a></li>
+          <li><a href="https://www.cybernx.com/sbom-requirement-of-sebi-cscrf">SBOM requirement of SEBI CSCRF</a></li>
+          <li><a href="https://waveup.com/blog/startup-valuation-methods/">Startup valuation methods compared</a></li>
+          <li><a href="https://www.equidam.com/five-startup-valuation-methods/">Equidam, five valuation methods</a></li>
+          <li><a href="https://raiseiq.in/blog/seed-valuation-benchmarks-india/">India seed valuation benchmarks 2026</a></li>
+          <li><a href="https://virtualauditor.in/learn/india-startup-valuation-benchmarks-2026/">India stage-wise valuation benchmarks</a></li>
+          <li><a href="https://finvalresearch.in/india-startup-funding-report-2026/">India Startup Funding Report 2026</a></li>
+          <li><a href="https://www.thevccorner.com/p/saas-company-valuation-formula-2026">Private SaaS multiples 2026</a></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ids=["stake","chq","raise","deckPre","entities","apps","s1","s2","s3","apc","p1","p2","churn","sbA","sbP","mult","ret","exitY","g","keep","bMax","b1","b2","b3","b4","b5","scBase","c1","c2","c3","c4","c5","c6","c7"];
+const v=id=>parseFloat($(id).value);
+// money is held in lakh. 100 lakh = 1 crore.
+const money=l=>{ if(!isFinite(l)) return "–"; const a=Math.abs(l);
+  if(a>=100){const c=l/100; return "₹"+(a>=10000?Math.round(c).toLocaleString("en-IN"):c.toFixed(a>=1000?1:2))+" Cr";}
+  return "₹"+l.toFixed(a>=10?1:2)+" L"; };
+const pct=x=>(x*100).toFixed(1)+"%";
+const presets={pCons:{s1:1,s2:4,s3:10,apc:1.5},pBase:{s1:1.5,s2:8,s3:20,apc:2},pFounder:{s1:1.25,s2:10,s3:40,apc:3}};
+
+function model(){
+  const E=v("entities"),apps=v("apps"),apc=v("apc"),p1=v("p1"),p2=v("p2"),ch=v("churn")/100;
+  const sb=v("sbA")/100*v("sbP"), rec=p2+sb;                 // recurring ₹L per agreement
+  const addr=E*apps, cap=addr*rec;
+  const sh=[v("s1"),v("s2"),v("s3")].map(x=>x/100);
+  const yrs=[];let prev=0;
+  sh.forEach((s,i)=>{const clients=E*s, act=Math.min(clients*apc,addr);
+    const kept=prev*(1-ch), nw=Math.max(act-kept,0);
+    yrs.push({clients,act,nw,arr:act*rec,bill:nw*p1+Math.min(kept,act)*p2+act*sb}); prev=act;});
+  const T=v("exitY"),g=v("g")/100,mult=v("mult"),R=v("ret"),keep=v("keep")/100,raise=v("raise");
+  let arr=yrs[2].arr,capped=false; const NA=Math.min(5,T); let arrA=arr;
+  for(let y=4;y<=T;y++){arr*=1+g; if(arr>cap){arr=cap;capped=true;} if(y===NA)arrA=arr;}
+  const run=raise/(v("stake")/100)-raise, valA=arrA*mult;
+  const exit=arr*mult, irr=Math.pow(R,1/T)-1;
+  const vcAt=y=>exit*keep/Math.pow(1+irr,T-y);
+  const vcPre=Math.max(vcAt(0)-raise,0);
+  const berkus=v("bMax")*100*(v("b1")+v("b2")+v("b3")+v("b4")+v("b5"))/100;
+  const w=[.30,.25,.15,.10,.10,.05,.05];
+  const sc=v("scBase")*100*w.reduce((a,x,i)=>a+x*v("c"+(i+1))/100,0);
+  yrs.forEach((y,i)=>{y.vc=vcAt(i+1);y.rm=y.arr*mult;y.val=(y.vc+y.rm)/2;});
+  yrs.forEach(y=>{y.x3=y.bill*3;});
+  const m=[berkus,sc,vcPre,run], lo=Math.min(...m), hi=Math.max(...m), mid=(berkus+sc+vcPre+run)/4;
+  return {run,NA,valA,E,apps,addr,cap,rec,yrs,T,mult,R,keep,raise,exit,exitArr:arr,irr,capped,berkus,sc,vcPre,lo,hi,mid,vc0:vcAt(0)};
+}
+
+function render(){
+  const M=model(), deck=v("deckPre")*100;
+  $("stakeO").textContent=v("stake")+"%";$("chqO").textContent=money(v("chq"));$("mRun").textContent=money(M.run);
+  $("inRun").textContent=money(M.run);
+  $("inAngels").textContent=Math.ceil(M.raise/v("chq"));
+  const mx=pre=>M.raise/(pre+M.raise)*M.keep, tag=(x,lo)=>'<span class="pill '+(x>=lo?"good":"bad")+' num">'+x.toFixed(1)+"×</span>";
+  const aMid=mx(M.mid)*M.valA/M.raise, aDeck=mx(deck)*M.valA/M.raise, vMid=mx(M.mid)*M.exit/M.raise;
+  $("inA1L").textContent="Angel's return by year "+M.NA+", entering at the midpoint (they want 2–5×)";$("inA1").innerHTML=tag(aMid,2);
+  $("inA2L").textContent="Angel's return by year "+M.NA+", entering at the deck valuation";$("inA2").innerHTML=tag(aDeck,2);
+  $("inV1L").textContent="VC's return by year "+M.T+", entering at the midpoint (they want 15–20×)";$("inV1").innerHTML=tag(vMid,15);
+  $("inMile").textContent="A target-linked offer in the Startup Singam style, as an illustration: "+money(M.mid)+" pre-money now, rising to "+money(M.mid*1.2)+" if year-1 billings reach "+money(M.yrs[0].bill)+".";
+  const out={raise:money(v("raise")),deckPre:money(deck),entities:v("entities"),apps:v("apps"),
+    s1:v("s1")+"%",s2:v("s2")+"%",s3:v("s3")+"%",apc:v("apc"),p1:money(v("p1")),p2:money(v("p2")),churn:v("churn")+"%",
+    sbA:v("sbA")+"%",sbP:money(v("sbP")),mult:v("mult")+"×",ret:v("ret")+"× ("+Math.round(M.irr*100)+"% a year)",exitY:"Year "+v("exitY"),
+    g:v("g")+"%",keep:v("keep")+"%",bMax:money(v("bMax")*100),scBase:money(v("scBase")*100)};
+  for(const k in out)$(k+"O").textContent=out[k];
+  ["b1","b2","b3","b4","b5","c1","c2","c3","c4","c5","c6","c7"].forEach(k=>$(k+"O").textContent=v(k)+"%");
+
+  $("midBig").textContent=money(M.mid);
+  $("rangeTxt").textContent="Range across the four methods: "+money(M.lo)+" to "+money(M.hi);
+  $("mBerkus").textContent=money(M.berkus);$("mScore").textContent=money(M.sc);$("mVC").textContent=money(M.vcPre);
+  const ratio=deck/M.mid, vd=$("verdict");
+  if(deck>M.hi*1.05){vd.className="pill bad";vd.textContent="Deck figure is "+ratio.toFixed(1)+"× the midpoint";}
+  else if(deck<M.lo*0.95){vd.className="pill warn";vd.textContent="Deck figure is below the range";}
+  else{vd.className="pill good";vd.textContent="Deck figure sits inside the range";}
+  const max=Math.max(deck,M.hi)*1.15, P=x=>Math.min(Math.max(x/max*100,0),100);
+  $("band").style.left=P(M.lo)+"%";$("band").style.width=Math.max(P(M.hi)-P(M.lo),.6)+"%";
+  $("needle").style.left=P(M.mid)+"%";$("deckmark").style.left=P(deck)+"%";
+  const place=(el,p)=>{el.style.left=p<12?"0":p>86?"auto":p+"%";el.style.right=p>86?"0":"auto";el.style.transform=(p<12||p>86)?"none":"translateX(-50%)";};
+  const pm=P(M.mid),pd=P(deck); place($("midLbl"),pm);place($("deckLbl"),pd);
+  $("midLbl").style.top=Math.abs(pm-pd)<16?"-14px":"0";
+  $("scaleMax").textContent=money(max);
+
+  $("dilDeck").textContent=pct(M.raise/(deck+M.raise));
+  $("dilMid").textContent=pct(M.raise/(M.mid+M.raise));
+  const needExit=(deck+M.raise)*M.R/M.keep, needArr=needExit/M.mult;
+  $("needExit").textContent=money(needExit);$("needArr").textContent=money(needArr);
+  $("needNote").textContent="The mid-size NBFC market at 100% share is "+money(M.cap)+" a year in recurring fees. The deck figure needs "+(needArr/M.cap).toFixed(1)+"× that, at a "+M.R+"× investor return by year "+M.T+".";
+  $("mktNote").textContent=Math.round(M.addr).toLocaleString("en-IN")+" possible agreements, worth "+money(M.cap)+" a year at renewal price"+(v("sbA")>0?" plus SBOM":"")+".";
+
+  const rows=[["Client NBFCs",y=>Math.round(y.clients)],["Active agreements",y=>Math.round(y.act).toLocaleString("en-IN")],
+    ["Share of all possible agreements",y=>pct(y.act/M.addr)],["Billings in the year",y=>money(y.bill)],
+    ["Recurring revenue, year-end",y=>money(y.arr)],["VC-method value",y=>money(y.vc)],["Recurring revenue × "+M.mult,y=>money(y.rm)],["Angel rule: 3 × billings",y=>money(y.x3)]];
+  $("tbody").innerHTML=rows.map(r=>"<tr><td>"+r[0]+"</td>"+M.yrs.map(y=>"<td>"+r[1](y)+"</td>").join("")+"</tr>").join("")
+    +'<tr class="hl"><td>Indicative valuation</td>'+M.yrs.map(y=>"<td>"+money(y.val)+"</td>").join("")+"</tr>";
+  const cf=$("capFlag");cf.hidden=!M.capped;
+  if(M.capped)cf.textContent="Growth after year 3 hits the ceiling of this market ("+money(M.cap)+" a year). Exit value is capped there. A bigger exit needs banks, SEBI entities or new products.";
+
+  chart(M);fixes(M,deck);
+}
+
+function chart(M){
+  const W=640,H=260,L=44,R=12,T=14,B=30,pw=W-L-R,ph=H-T-B;
+  const data=[{k:"Today",a:M.vc0,b:0},...M.yrs.map((y,i)=>({k:"Year "+(i+1),a:y.vc,b:y.rm}))];
+  const mx=Math.max(...data.map(d=>Math.max(d.a,d.b)),1)/100;
+  const step=[.5,1,2,5,10,20,50,100,200,500,1000].find(s=>mx/s<=5)||2000, top=Math.ceil(mx/step)*step;
+  const Y=c=>T+ph-(c/top)*ph; let s="";
+  for(let t=0;t<=top+1e-9;t+=step){s+=`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${Y(t)+4}" text-anchor="end">${t}</text>`;}
+  const gw=pw/data.length,bw=Math.min(46,gw*.3);
+  data.forEach((d,i)=>{const cx=L+gw*i+gw/2;
+    [["a","var(--s1)","VC method",-bw-1],["b","var(--s2)","Recurring revenue × multiple",1]].forEach(([key,col,name,off])=>{
+      const val=d[key]/100,h=Math.max((val/top)*ph,0); if(h<=0)return;
+      s+=`<rect class="bar" x="${cx+off}" y="${Y(val)}" width="${bw}" height="${h}" rx="3" fill="${col}" data-t="${d.k} · ${name}: ${money(d[key])}"/>`;});
+    s+=`<text x="${cx}" y="${H-10}" text-anchor="middle">${d.k}</text>`;});
+  const svg=$("chart");svg.innerHTML=s;
+  const tip=$("tip");
+  svg.querySelectorAll(".bar").forEach(b=>{
+    b.addEventListener("pointermove",e=>{const r=svg.getBoundingClientRect();tip.hidden=false;tip.textContent=b.dataset.t;
+      tip.style.left=Math.min(Math.max(e.clientX-r.left,110),r.width-110)+"px";tip.style.top=(e.clientY-r.top)+"px";});
+    b.addEventListener("pointerleave",()=>tip.hidden=true);});
+}
+
+function fixes(M,deck){
+  const y3=M.yrs[2], L=[];
+  L.push("<b>Pre-money valuation.</b> The Code Secure Vault deck asks ₹75 L at ₹15 Cr pre-money for about 4.8%. On the current levers the four methods give "+money(M.lo)+" to "+money(M.hi)+", midpoint "+money(M.mid)+". The same raise at the midpoint costs "+pct(M.raise/(M.mid+M.raise))+" of the company.");
+  L.push("<b>Two decks, two different companies.</b> The repo deck asks USD 500K–1M and promises 1,750 contracts and USD 5.5–6.3M recurring revenue in 36 months. The Drive deck asks ₹75 L and promises 160 clients and ₹2.72 Cr. Pick one plan. This model at your current levers gives "+Math.round(y3.act).toLocaleString("en-IN")+" agreements and "+money(y3.arr)+" at the end of year 3.");
+  L.push("<b>First-year price is not recurring revenue.</b> The repo deck's ₹46–52.5 Cr on 1,750 contracts works out to about ₹2.6–3.0 L per contract every year, yet its own custody price is ₹1.2 L and the Drive deck's renewal price is ₹1.7 L. Recurring revenue should use the renewal price.");
+  L.push("<b>Who is actually mandated.</b> The repo deck counts 9,000+ NBFCs in the market. Commentary on the 2026 NBFC Directions places the escrow rule on Middle Layer and above, roughly 575–645 entities. The Base Layer is a voluntary sale. Also check whether Small Finance Banks fall under the commercial bank Directions before listing them.");
+  L.push("<b>\"Or other arrangements\".</b> The RBI text allows escrow or other arrangements. An investor will ask how many NBFCs will choose escrow. Put a number on it and show the evidence.");
+  L.push("<b>40% share in three years.</b> A 20-year incumbent (EscrowNXT) and two funded platforms (Castler, PaySprint) are already selling. 40% may be reachable later, but present it as the upside case, with a base case an investor can believe.");
+  L.push("<b>Show the technology head.</b> The Drive deck lists two advocates and a pending banking advisor, with no technology lead. The repo deck names a CTO. Indian VCs on the Kamath panel said they look for a strong CTO beside the CEO, so put that person on the team slide.");
+  L.push("<b>Market size is the real limit.</b> Mid-size NBFCs alone are worth "+money(M.cap)+" a year here. Show the path beyond them (banks, SEBI entities, SBOM, verification) as dated steps with their own numbers, because that is what supports a higher valuation.");
+  $("fixes").innerHTML=L.map(x=>"<li>"+x+"</li>").join("");
+}
+
+ids.forEach(id=>$(id).addEventListener("input",()=>{ if(["s1","s2","s3","apc"].includes(id))setPreset(null); render();}));
+function setPreset(k){["pCons","pBase","pFounder"].forEach(b=>$(b).setAttribute("aria-pressed",String(b===k)));}
+Object.keys(presets).forEach(k=>$(k).addEventListener("click",()=>{for(const f in presets[k])$(f).value=presets[k][f];setPreset(k);render();}));
+render();
+</script>
