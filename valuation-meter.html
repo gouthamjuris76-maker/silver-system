@@ -58,8 +58,8 @@ a{color:var(--accent)}
 .scale{position:absolute;top:54px;left:0;right:0;display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg3)}
 .pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600}
 .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
-.methods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media (max-width:520px){.methods{grid-template-columns:1fr}}
+.methods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.methods{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .mcard{background:var(--sunk);border-radius:8px;padding:10px 12px}
 .mcard .v{font-size:20px;font-weight:600}
 .mcard small{color:var(--fg3);display:block;font-size:12px}
@@ -107,7 +107,7 @@ ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
   <header class="stack" style="gap:8px">
     <span class="eyebrow">Code Secure · single-beneficiary software escrow · all figures in ₹</span>
     <h1>Valuation Meter</h1>
-    <p class="lede">Three pre-revenue valuation methods, checked against a three-year revenue build for mid-size NBFCs. Move any lever and every number updates. Defaults are an outside evaluator's starting view, so change them where you know better.</p>
+    <p class="lede">Four ways of pricing a pre-revenue company, including the rule Indian investors use in practice, checked against a three-year revenue build for mid-size NBFCs. Move any lever and every number updates. Defaults are an outside evaluator's starting view, so change them where you know better.</p>
   </header>
 
   <section class="top">
@@ -128,6 +128,7 @@ ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
         <div class="mcard"><small>Berkus</small><div class="v num" id="mBerkus"></div><small>risk-reduction checklist</small></div>
         <div class="mcard"><small>Scorecard (Payne)</small><div class="v num" id="mScore"></div><small>vs regional median</small></div>
         <div class="mcard"><small>VC method</small><div class="v num" id="mVC"></div><small>exit value worked backward</small></div>
+        <div class="mcard"><small>Runway and stake</small><div class="v num" id="mRun"></div><small>Indian seed practice</small></div>
       </div>
     </div>
 
@@ -137,6 +138,10 @@ ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
         <input type="range" id="raise" min="25" max="900" step="5" value="75"></div>
       <div class="ctl"><label for="deckPre">Pre-money claimed in deck</label><output id="deckPreO"></output>
         <input type="range" id="deckPre" min="2" max="40" step="0.5" value="15"></div>
+      <div class="ctl"><label for="stake">Stake investors usually take in a round</label><output id="stakeO"></output>
+        <input type="range" id="stake" min="10" max="25" step="0.5" value="17.5"></div>
+      <div class="ctl"><label for="chq">Typical angel cheque</label><output id="chqO"></output>
+        <input type="range" id="chq" min="5" max="30" step="1" value="10"></div>
       <div>
         <div class="kv"><span>Equity given at deck valuation</span><b class="num" id="dilDeck"></b></div>
         <div class="kv"><span>Equity given at meter midpoint</span><b class="num" id="dilMid"></b></div>
@@ -244,6 +249,38 @@ ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
       </div>
 
       <div class="panel stack">
+        <h2>How Indian investors would price this round</h2>
+        <div>
+          <div class="kv"><span>Pre-money by the runway-and-stake rule</span><b class="num" id="inRun"></b></div>
+          <div class="kv"><span>Angels needed at this cheque size</span><b class="num" id="inAngels"></b></div>
+          <div class="kv"><span id="inA1L"></span><b id="inA1"></b></div>
+          <div class="kv"><span id="inA2L"></span><b id="inA2"></b></div>
+          <div class="kv"><span id="inV1L"></span><b id="inV1"></b></div>
+        </div>
+        <p class="note" id="inMile"></p>
+        <ul class="fix">
+          <li><b>Angels have no formula.</b> Sarthak Ahuja: angels ask for a stake that feels worth their cheque and want 2–5× in 4–5 years, by selling to a later VC. VCs fund the next 18–24 months of runway for 15–20% and want 15–20× in 5 years, 8 at most. They compare you to competitors on revenue multiples. Private equity and DCF come much later.</li>
+          <li><b>Dilution adds up.</b> Ahuja's thumb rule is about 17.5% a round on average, 20–25% in early rounds, over four rounds.</li>
+          <li><b>Simple rules angels use.</b> Tarun Mahajan: before revenue, a five-point checklist where a 50% score halves the value. After revenue, many angels pay about 3× yearly sales, or match a recently funded competitor. A cash-flow valuation assumes the investor wants at least 25% a year.</li>
+          <li><b>Valuation gets negotiated down, then tied to targets.</b> On Startup Singam a founder asked ₹2.5 Cr at ₹50 Cr. The investors said they were not convinced by the valuation, cut the round to ₹1.5 Cr, and set the price by a revenue target: ₹30 Cr if turnover reached ₹6 Cr by the date, ₹25 Cr if not, through convertible debentures. The captions are partial, so treat the details as approximate.</li>
+          <li><b>Fund maths drives everything.</b> Karthik Reddy of Blume on Nikhil Kamath's show: overseas backers of Indian funds expect at least 25% compounded, about five companies return 80–90% of a fund, and term sheets expect an exit in 5–7 years. A company that cannot become one of those five is a hard sell to a VC, whatever the price.</li>
+          <li><b>Team.</b> On the same panel the investors said a CEO needs a strong technology co-founder beside them, and that building product before understanding the problem usually fails.</li>
+          <li><b>Most businesses should not raise VC money.</b> Ankur Warikoo: about 90% of businesses are not fundable in the venture sense. Angels usually write ₹5–30 lakh cheques, so ₹1 Cr needs 4–20 of them.</li>
+        </ul>
+        <p class="note">Sources: captions and descriptions of the videos, read through a search service. I could not get the full transcript of the Peak XV, Elevation and Accel panel or the 2.5-hour Kamath episode, so those are covered only by clips and Blume's written summary.</p>
+        <ol class="src">
+          <li><a href="https://www.youtube.com/watch?v=s68vp8EtvDI">Sarthak Ahuja, valuation methods by investor type</a></li>
+          <li><a href="https://www.youtube.com/shorts/xTAjqkl33_Y">Sarthak Ahuja, how much equity to give</a></li>
+          <li><a href="https://www.youtube.com/watch?v=0NfTzbCUxoQ">Sarthak Ahuja, five things you need to raise funds</a></li>
+          <li><a href="https://www.youtube.com/watch?v=332Y8G3Ok50">Tarun Mahajan, startup valuation made simple</a></li>
+          <li><a href="https://www.youtube.com/watch?v=iFwekw8jXgM">Startup Singam pitch episode</a></li>
+          <li><a href="https://blume.vc/commentaries/karthik-reddy-on-wtf-is-with-nikhil-kamath-episode-9">Blume summary of WTF is Venture Capital</a></li>
+          <li><a href="https://www.youtube.com/watch?v=fnwmK3Zovdk">Top VCs share their investment checklist</a></li>
+          <li><a href="https://www.youtube.com/watch?v=93LLYkn8wls">Ankur Warikoo, raising funds explained</a></li>
+        </ol>
+      </div>
+
+      <div class="panel stack">
         <h2>What to correct in the pitch</h2>
         <ul class="fix" id="fixes"></ul>
       </div>
@@ -281,7 +318,7 @@ ul.fix li{color:var(--fg2)} ul.fix b{color:var(--fg)}
 
 <script>
 const $=id=>document.getElementById(id);
-const ids=["raise","deckPre","entities","apps","s1","s2","s3","apc","p1","p2","churn","sbA","sbP","mult","ret","exitY","g","keep","bMax","b1","b2","b3","b4","b5","scBase","c1","c2","c3","c4","c5","c6","c7"];
+const ids=["stake","chq","raise","deckPre","entities","apps","s1","s2","s3","apc","p1","p2","churn","sbA","sbP","mult","ret","exitY","g","keep","bMax","b1","b2","b3","b4","b5","scBase","c1","c2","c3","c4","c5","c6","c7"];
 const v=id=>parseFloat($(id).value);
 // money is held in lakh. 100 lakh = 1 crore.
 const money=l=>{ if(!isFinite(l)) return "–"; const a=Math.abs(l);
@@ -300,8 +337,9 @@ function model(){
     const kept=prev*(1-ch), nw=Math.max(act-kept,0);
     yrs.push({clients,act,nw,arr:act*rec,bill:nw*p1+Math.min(kept,act)*p2+act*sb}); prev=act;});
   const T=v("exitY"),g=v("g")/100,mult=v("mult"),R=v("ret"),keep=v("keep")/100,raise=v("raise");
-  let arr=yrs[2].arr,capped=false;
-  for(let y=4;y<=T;y++){arr*=1+g; if(arr>cap){arr=cap;capped=true;}}
+  let arr=yrs[2].arr,capped=false; const NA=Math.min(5,T); let arrA=arr;
+  for(let y=4;y<=T;y++){arr*=1+g; if(arr>cap){arr=cap;capped=true;} if(y===NA)arrA=arr;}
+  const run=raise/(v("stake")/100)-raise, valA=arrA*mult;
   const exit=arr*mult, irr=Math.pow(R,1/T)-1;
   const vcAt=y=>exit*keep/Math.pow(1+irr,T-y);
   const vcPre=Math.max(vcAt(0)-raise,0);
@@ -309,12 +347,22 @@ function model(){
   const w=[.30,.25,.15,.10,.10,.05,.05];
   const sc=v("scBase")*100*w.reduce((a,x,i)=>a+x*v("c"+(i+1))/100,0);
   yrs.forEach((y,i)=>{y.vc=vcAt(i+1);y.rm=y.arr*mult;y.val=(y.vc+y.rm)/2;});
-  const m=[berkus,sc,vcPre], lo=Math.min(...m), hi=Math.max(...m), mid=(berkus+sc+vcPre)/3;
-  return {E,apps,addr,cap,rec,yrs,T,mult,R,keep,raise,exit,exitArr:arr,irr,capped,berkus,sc,vcPre,lo,hi,mid,vc0:vcAt(0)};
+  yrs.forEach(y=>{y.x3=y.bill*3;});
+  const m=[berkus,sc,vcPre,run], lo=Math.min(...m), hi=Math.max(...m), mid=(berkus+sc+vcPre+run)/4;
+  return {run,NA,valA,E,apps,addr,cap,rec,yrs,T,mult,R,keep,raise,exit,exitArr:arr,irr,capped,berkus,sc,vcPre,lo,hi,mid,vc0:vcAt(0)};
 }
 
 function render(){
   const M=model(), deck=v("deckPre")*100;
+  $("stakeO").textContent=v("stake")+"%";$("chqO").textContent=money(v("chq"));$("mRun").textContent=money(M.run);
+  $("inRun").textContent=money(M.run);
+  $("inAngels").textContent=Math.ceil(M.raise/v("chq"));
+  const mx=pre=>M.raise/(pre+M.raise)*M.keep, tag=(x,lo)=>'<span class="pill '+(x>=lo?"good":"bad")+' num">'+x.toFixed(1)+"×</span>";
+  const aMid=mx(M.mid)*M.valA/M.raise, aDeck=mx(deck)*M.valA/M.raise, vMid=mx(M.mid)*M.exit/M.raise;
+  $("inA1L").textContent="Angel's return by year "+M.NA+", entering at the midpoint (they want 2–5×)";$("inA1").innerHTML=tag(aMid,2);
+  $("inA2L").textContent="Angel's return by year "+M.NA+", entering at the deck valuation";$("inA2").innerHTML=tag(aDeck,2);
+  $("inV1L").textContent="VC's return by year "+M.T+", entering at the midpoint (they want 15–20×)";$("inV1").innerHTML=tag(vMid,15);
+  $("inMile").textContent="A target-linked offer in the Startup Singam style, as an illustration: "+money(M.mid)+" pre-money now, rising to "+money(M.mid*1.2)+" if year-1 billings reach "+money(M.yrs[0].bill)+".";
   const out={raise:money(v("raise")),deckPre:money(deck),entities:v("entities"),apps:v("apps"),
     s1:v("s1")+"%",s2:v("s2")+"%",s3:v("s3")+"%",apc:v("apc"),p1:money(v("p1")),p2:money(v("p2")),churn:v("churn")+"%",
     sbA:v("sbA")+"%",sbP:money(v("sbP")),mult:v("mult")+"×",ret:v("ret")+"× ("+Math.round(M.irr*100)+"% a year)",exitY:"Year "+v("exitY"),
@@ -323,7 +371,7 @@ function render(){
   ["b1","b2","b3","b4","b5","c1","c2","c3","c4","c5","c6","c7"].forEach(k=>$(k+"O").textContent=v(k)+"%");
 
   $("midBig").textContent=money(M.mid);
-  $("rangeTxt").textContent="Range across the three methods: "+money(M.lo)+" to "+money(M.hi);
+  $("rangeTxt").textContent="Range across the four methods: "+money(M.lo)+" to "+money(M.hi);
   $("mBerkus").textContent=money(M.berkus);$("mScore").textContent=money(M.sc);$("mVC").textContent=money(M.vcPre);
   const ratio=deck/M.mid, vd=$("verdict");
   if(deck>M.hi*1.05){vd.className="pill bad";vd.textContent="Deck figure is "+ratio.toFixed(1)+"× the midpoint";}
@@ -346,7 +394,7 @@ function render(){
 
   const rows=[["Client NBFCs",y=>Math.round(y.clients)],["Active agreements",y=>Math.round(y.act).toLocaleString("en-IN")],
     ["Share of all possible agreements",y=>pct(y.act/M.addr)],["Billings in the year",y=>money(y.bill)],
-    ["Recurring revenue, year-end",y=>money(y.arr)],["VC-method value",y=>money(y.vc)],["Recurring revenue × "+M.mult,y=>money(y.rm)]];
+    ["Recurring revenue, year-end",y=>money(y.arr)],["VC-method value",y=>money(y.vc)],["Recurring revenue × "+M.mult,y=>money(y.rm)],["Angel rule: 3 × billings",y=>money(y.x3)]];
   $("tbody").innerHTML=rows.map(r=>"<tr><td>"+r[0]+"</td>"+M.yrs.map(y=>"<td>"+r[1](y)+"</td>").join("")+"</tr>").join("")
     +'<tr class="hl"><td>Indicative valuation</td>'+M.yrs.map(y=>"<td>"+money(y.val)+"</td>").join("")+"</tr>";
   const cf=$("capFlag");cf.hidden=!M.capped;
@@ -378,12 +426,13 @@ function chart(M){
 
 function fixes(M,deck){
   const y3=M.yrs[2], L=[];
-  L.push("<b>Pre-money valuation.</b> The Code Secure Vault deck asks ₹75 L at ₹15 Cr pre-money for about 4.8%. On the current levers the three methods give "+money(M.lo)+" to "+money(M.hi)+", midpoint "+money(M.mid)+". The same raise at the midpoint costs "+pct(M.raise/(M.mid+M.raise))+" of the company.");
+  L.push("<b>Pre-money valuation.</b> The Code Secure Vault deck asks ₹75 L at ₹15 Cr pre-money for about 4.8%. On the current levers the four methods give "+money(M.lo)+" to "+money(M.hi)+", midpoint "+money(M.mid)+". The same raise at the midpoint costs "+pct(M.raise/(M.mid+M.raise))+" of the company.");
   L.push("<b>Two decks, two different companies.</b> The repo deck asks USD 500K–1M and promises 1,750 contracts and USD 5.5–6.3M recurring revenue in 36 months. The Drive deck asks ₹75 L and promises 160 clients and ₹2.72 Cr. Pick one plan. This model at your current levers gives "+Math.round(y3.act).toLocaleString("en-IN")+" agreements and "+money(y3.arr)+" at the end of year 3.");
   L.push("<b>First-year price is not recurring revenue.</b> The repo deck's ₹46–52.5 Cr on 1,750 contracts works out to about ₹2.6–3.0 L per contract every year, yet its own custody price is ₹1.2 L and the Drive deck's renewal price is ₹1.7 L. Recurring revenue should use the renewal price.");
   L.push("<b>Who is actually mandated.</b> The repo deck counts 9,000+ NBFCs in the market. Commentary on the 2026 NBFC Directions places the escrow rule on Middle Layer and above, roughly 575–645 entities. The Base Layer is a voluntary sale. Also check whether Small Finance Banks fall under the commercial bank Directions before listing them.");
   L.push("<b>\"Or other arrangements\".</b> The RBI text allows escrow or other arrangements. An investor will ask how many NBFCs will choose escrow. Put a number on it and show the evidence.");
   L.push("<b>40% share in three years.</b> A 20-year incumbent (EscrowNXT) and two funded platforms (Castler, PaySprint) are already selling. 40% may be reachable later, but present it as the upside case, with a base case an investor can believe.");
+  L.push("<b>Show the technology head.</b> The Drive deck lists two advocates and a pending banking advisor, with no technology lead. The repo deck names a CTO. Indian VCs on the Kamath panel said they look for a strong CTO beside the CEO, so put that person on the team slide.");
   L.push("<b>Market size is the real limit.</b> Mid-size NBFCs alone are worth "+money(M.cap)+" a year here. Show the path beyond them (banks, SEBI entities, SBOM, verification) as dated steps with their own numbers, because that is what supports a higher valuation.");
   $("fixes").innerHTML=L.map(x=>"<li>"+x+"</li>").join("");
 }
